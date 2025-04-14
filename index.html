@@ -89,7 +89,7 @@
   fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
     .then(response => response.json())
     .then(data => {
-      const indirizzo = data.display_name || "Indirizzo non trovato";
+      const address = data.display_name || "Indirizzo non trovato";
 
       L.marker([lat, lon]).addTo(map)
         .bindPopup(`<b>La tua posizione:</b><br>${address}`)
