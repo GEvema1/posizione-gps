@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Posizione con Mappa</title>
+  <title>Invia la tua Posizione</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -93,6 +93,7 @@
       navigator.geolocation.getCurrentPosition(async (position) => {
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
 
         let addressParts = {};
         let fullAddress = "";
@@ -106,8 +107,8 @@
           console.error("Reverse geocoding fallito:", err);
         }
 
-        // Invia i dati al tuo Google Apps Script
-        fetch("https://script.google.com/macros/s/AKfycbxCow6TnAF8U16yrJHz1oWkXapt79EHxJYDIKgHYfsJcgrHkNyfthLWVsuI5oU9hHP6gw/exec", {
+        // 🔁 Sostituisci il link qui sotto con il tuo URL Apps Script
+        fetch("https://script.google.com/macros/s/AKfycbxtdF1DBCn1rtPmSZNYDN6I03-cMZNTFq-cTxcbsYpGBXWoBSRFD5LDv_hT7cOE2Ykh/exec", {
           method: "POST",
           mode: "no-cors",
           headers: {
@@ -116,6 +117,7 @@
           body: JSON.stringify({
             latitude: lat,
             longitude: lon,
+            accuracy: accuracy,
             phone: phone,
             road: addressParts.road || "",
             house_number: addressParts.house_number || "",
@@ -126,24 +128,28 @@
           })
         });
 
+        // UI feedback
         document.querySelector(".loader").style.display = "none";
         document.querySelector("button").style.display = "none";
-        document.getElementById("status").innerHTML = `✅ Posizione inviata!<br>📞 ${phone}<br>📍 ${fullAddress}`;
+        document.getElementById("status").innerHTML = `
+          ✅ Posizione inviata!<br>
+          📞 ${phone}<br>
+          📍 ${fullAddress}<br>
+          🎯 Precisione: ±${Math.round(accuracy)} metri
+        `;
 
-        // Mostra la mappa
+        // Mappa
         document.getElementById("map").style.display = "block";
-
-        // Crea la mappa
         if (!map) {
           map = L.map('map').setView([lat, lon], 16);
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap',
           }).addTo(map);
           marker = L.marker([lat, lon]).addTo(map)
-            .bindPopup(fullAddress).openPopup();
+            .bindPopup(`${fullAddress}<br>±${Math.round(accuracy)} m`).openPopup();
         } else {
           map.setView([lat, lon], 16);
-          marker.setLatLng([lat, lon]).bindPopup(fullAddress).openPopup();
+          marker.setLatLng([lat, lon]).bindPopup(`${fullAddress}<br>±${Math.round(accuracy)} m`).openPopup();
         }
 
       }, () => {
