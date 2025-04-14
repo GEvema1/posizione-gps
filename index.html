@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Invia posizione</title>
+</head>
+<body>
+  <h2>Condividi la tua posizione</h2>
+  <button onclick="inviaPosizione()">📍 Invia</button>
+
+  <p id="status"></p>
+
+  <script>
+    function inviaPosizione() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+          const data = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          };
+
+          fetch("https://script.google.com/macros/s/AKfycbyppksIkD6cg9xUt5t5YhF8giZ9vJPM9lGqm1bJbBTpVVPkgdSWc3OHmc9qzSnuhYomZw/exec", {
+            method: "POST",
+            mode: "no-cors",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+          });
+
+          document.getElementById("status").innerText = "Posizione inviata!";
+        }, () => {
+          document.getElementById("status").innerText = "Errore nel rilevamento.";
+        });
+      } else {
+        document.getElementById("status").innerText = "Geolocalizzazione non supportata.";
+      }
+    }
+  </script>
+</body>
+</html>
