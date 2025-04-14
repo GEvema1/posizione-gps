@@ -3,7 +3,7 @@
 <head>
   <title>Condividi la tua posizione</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -39,69 +39,73 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    function inviaPosizione() {
+    async function inviaPosizione() {
       const phone = document.getElementById("phone").value.trim();
-
       if (!phone) {
         document.getElementById("status").innerText = "Inserisci il numero di telefono.";
         return;
       }
 
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          
-          // Invia al Google Sheet
-          fetch("https://script.google.com/macros/s/AKfycbx-7hYldKSCgi1HDiwwW0uCvmYPhPnSOhnYtFkOWCSvIluwH2N2Egw9NR1MJsGvD2tP0Q/exec", {
-            method: "POST",
-            mode: "no-cors",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              latitude: lat,
-              longitude: lon,
-              phone: phone,
-              address: address
-            })
-          });
-
-          document.getElementById("status").innerText = "Posizione inviata!";
-
-          // Mostra la mappa
-          mostraMappa(lat, lon);
-        }, () => {
-          document.getElementById("status").innerText = "Errore nel rilevamento della posizione.";
-        });
-      } else {
+      if (!navigator.geolocation) {
         document.getElementById("status").innerText = "Geolocalizzazione non supportata.";
+        return;
       }
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        let address = "Indirizzo non disponibile";
+        let addressParts = {};
+
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+          const data = await res.json();
+          address = data.display_name || address;
+          addressParts = data.address || {};
+        } catch (err) {
+          console.error("Errore nel reverse geocoding", err);
+        }
+
+        mostraMappa(lat, lon, address);
+
+        // INVIA A GOOGLE SHEET
+        fetch("https://script.google.com/macros/s/AKfycbxCow6TnAF8U16yrJHz1oWkXapt79EHxJYDIKgHYfsJcgrHkNyfthLWVsuI5oU9hHP6gw/exec", {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            latitude: lat,
+            longitude: lon,
+            phone: phone,
+            road: addressParts.road || "",
+            house_number: addressParts.house_number || "",
+            city: addressParts.city || addressParts.town || addressParts.village || "",
+            county: addressParts.county || "",
+            postcode: addressParts.postcode || "",
+            country: addressParts.country || ""
+          })
+        });
+
+        document.getElementById("status").innerText = "✅ Posizione inviata con successo!";
+      }, () => {
+        document.getElementById("status").innerText = "Errore nel rilevamento della posizione.";
+      });
     }
 
-    function mostraMappa(lat, lon) {
-  const map = L.map('map').setView([lat, lon], 15);
+    function mostraMappa(lat, lon, indirizzo) {
+      const map = L.map('map').setView([lat, lon], 15);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  // Chiedi l'indirizzo a Nominatim
-  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
-    .then(response => response.json())
-    .then(data => {
-      const address = data.display_name || "Indirizzo non trovato";
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
 
       L.marker([lat, lon]).addTo(map)
-        .bindPopup(`<b>La tua posizione:</b><br>${address}`)
+        .bindPopup(`<b>La tua posizione:</b><br>${indirizzo}`)
         .openPopup();
-    })
-    .catch(() => {
-      L.marker([lat, lon]).addTo(map)
-        .bindPopup("Posizione rilevata, ma indirizzo non disponibile.")
-        .openPopup();
-    });
-}
+    }
   </script>
 </body>
 </html>
