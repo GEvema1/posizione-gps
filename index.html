@@ -92,7 +92,7 @@
       const indirizzo = data.display_name || "Indirizzo non trovato";
 
       L.marker([lat, lon]).addTo(map)
-        .bindPopup(`<b>La tua posizione:</b><br>${indirizzo}`)
+        .bindPopup(`<b>La tua posizione:</b><br>${address}`)
         .openPopup();
     })
     .catch(() => {
