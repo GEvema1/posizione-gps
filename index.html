@@ -51,8 +51,7 @@
         navigator.geolocation.getCurrentPosition((position) => {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
-
-          console.log("Indirizzo:", address); // <--- AGGIUNGI QUI
+          
           // Invia al Google Sheet
           fetch("https://script.google.com/macros/s/AKfycbx-7hYldKSCgi1HDiwwW0uCvmYPhPnSOhnYtFkOWCSvIluwH2N2Egw9NR1MJsGvD2tP0Q/exec", {
             method: "POST",
