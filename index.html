@@ -1,75 +1,112 @@
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
-  <title>Condividi la tua posizione</title>
+  <meta charset="UTF-8">
+  <title>Posizione con Mappa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     body {
-      font-family: sans-serif;
+      font-family: system-ui, sans-serif;
+      background: #f4f4f4;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       text-align: center;
-      padding: 2em;
     }
-    #map {
-      height: 300px;
-      width: 100%;
-      margin-top: 20px;
-      border: 1px solid #ccc;
-    }
+
     input, button {
       padding: 10px;
       font-size: 16px;
+      margin: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      width: 80%;
+      max-width: 300px;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+    }
+
+    #status {
+      font-size: 1.1em;
+      margin: 10px 0;
+    }
+
+    #map {
+      height: 300px;
+      width: 90%;
+      max-width: 600px;
+      margin: 20px auto;
+      border-radius: 10px;
+      display: none;
+    }
+
+    .loader {
+      border: 6px solid #eee;
+      border-top: 6px solid #4CAF50;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin-top: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <h2>📍 Condividi la tua posizione</h2>
 
-  <p>Inserisci il tuo numero di telefono:</p>
-  <input type="tel" id="phone" placeholder="es. 3331234567"><br><br>
+  <h2>📍 Condivisione posizione</h2>
 
-  <button onclick="inviaPosizione()">Invia posizione</button>
-  <p id="status" style="margin-top: 20px;"></p>
+  <input type="tel" id="phone" placeholder="Inserisci il numero di telefono">
+  <button onclick="startInvio()">Invia posizione</button>
+
+  <div class="loader" style="display:none;"></div>
+  <div id="status"></div>
 
   <div id="map"></div>
 
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <script>
-    async function inviaPosizione() {
+    let map, marker;
+
+    function startInvio() {
       const phone = document.getElementById("phone").value.trim();
       if (!phone) {
-        document.getElementById("status").innerText = "Inserisci il numero di telefono.";
+        document.getElementById("status").innerText = "⚠️ Inserisci il numero di telefono.";
         return;
       }
 
-      if (!navigator.geolocation) {
-        document.getElementById("status").innerText = "Geolocalizzazione non supportata.";
-        return;
-      }
+      document.querySelector(".loader").style.display = "block";
+      document.getElementById("status").innerText = "Rilevamento posizione...";
 
       navigator.geolocation.getCurrentPosition(async (position) => {
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
 
-        let address = "Indirizzo non disponibile";
         let addressParts = {};
+        let fullAddress = "";
 
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
           const data = await res.json();
-          address = data.display_name || address;
+          fullAddress = data.display_name || "";
           addressParts = data.address || {};
         } catch (err) {
-          console.error("Errore nel reverse geocoding", err);
+          console.error("Reverse geocoding fallito:", err);
         }
 
-        mostraMappa(lat, lon, address);
-
-        // INVIA A GOOGLE SHEET
+        // Invia i dati al tuo Google Apps Script
         fetch("https://script.google.com/macros/s/AKfycbxCow6TnAF8U16yrJHz1oWkXapt79EHxJYDIKgHYfsJcgrHkNyfthLWVsuI5oU9hHP6gw/exec", {
           method: "POST",
           mode: "no-cors",
@@ -89,22 +126,30 @@
           })
         });
 
-        document.getElementById("status").innerText = "✅ Posizione inviata con successo!";
+        document.querySelector(".loader").style.display = "none";
+        document.querySelector("button").style.display = "none";
+        document.getElementById("status").innerHTML = `✅ Posizione inviata!<br>📞 ${phone}<br>📍 ${fullAddress}`;
+
+        // Mostra la mappa
+        document.getElementById("map").style.display = "block";
+
+        // Crea la mappa
+        if (!map) {
+          map = L.map('map').setView([lat, lon], 16);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap',
+          }).addTo(map);
+          marker = L.marker([lat, lon]).addTo(map)
+            .bindPopup(fullAddress).openPopup();
+        } else {
+          map.setView([lat, lon], 16);
+          marker.setLatLng([lat, lon]).bindPopup(fullAddress).openPopup();
+        }
+
       }, () => {
-        document.getElementById("status").innerText = "Errore nel rilevamento della posizione.";
+        document.querySelector(".loader").style.display = "none";
+        document.getElementById("status").innerText = "❌ Errore nel rilevamento della posizione.";
       });
-    }
-
-    function mostraMappa(lat, lon, indirizzo) {
-      const map = L.map('map').setView([lat, lon], 15);
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-
-      L.marker([lat, lon]).addTo(map)
-        .bindPopup(`<b>La tua posizione:</b><br>${indirizzo}`)
-        .openPopup();
     }
   </script>
 </body>
